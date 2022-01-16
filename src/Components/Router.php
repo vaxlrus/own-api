@@ -7,6 +7,7 @@ use \FastRoute\Dispatcher;
 use \FastRoute\RouteCollector;
 use App\Components\Api\Request;
 use App\Components\Api\Response;
+use ErrorException;
 use Exception;
 
 class Router
@@ -43,10 +44,10 @@ class Router
         $this->di = $di;
 
         // Если запрос не application/json, выдать ошибку
-        if ($this->request->getAccept() != 'application/json')
-        {
-            $this->response->sendError('Разрешены запросы только application/json');
-        }
+        // if ($this->request->getAccept() != 'application/json')
+        // {
+        //     $this->response->sendError('Разрешены запросы только application/json');
+        // }
 
         $this->start();
     }
@@ -80,13 +81,15 @@ class Router
         switch ($routeInfo[0]) {
             // Не найден путь
             case Dispatcher::NOT_FOUND:
-                $this->response->sendError('Запрашиваемый адрес не найден');
+                throw new ErrorException('Запрашиваемый адрес не найден');
+                // $this->response->sendError('Запрашиваемый адрес не найден');
                 
                 break;
 
             case Dispatcher::METHOD_NOT_ALLOWED:
                 $allowedMethods = $routeInfo[1];
-                $this->response->sendError('Метод ' . $httpMethod . ' не разрешен');
+                throw new ErrorException('Метод ' . $httpMethod . ' не разрешен');
+                // $this->response->sendError('Метод ' . $httpMethod . ' не разрешен');
                 
                 break;
 

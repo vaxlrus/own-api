@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Services\RoleService;
 use App\Components\Api\Response;
 use App\Components\Api\Request;
+use Exception;
 
 class RoleController
 {
@@ -20,16 +21,13 @@ class RoleController
     }
 
     // Получить роль
-    public function get(int $id): void
+    public function get(string $id): void
     {
         // Получить данные из репозитория
         $role = $this->roleService->get($id);
 
-        // Вернуть понятный массив
-        $result = $this->roleService->convertToArray($role);
-
         // Отправить результат
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($role);
     }
 
     // Создать роль
@@ -39,18 +37,20 @@ class RoleController
 
         $name = $body->name;
 
+        if (!isset($name))
+        {
+            throw new Exception('Не указан \'name\'');
+        }
+
         // Отправить запрос на создание
         $newRole = $this->roleService->create($name);
 
-        // Преобразовать ответ в массив
-        $result = $this->roleService->convertToArray($newRole);
-
         // Вернуть результат
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($newRole);
     }
 
     // Удалить роль
-    public function delete(int $id): void
+    public function delete(string $id): void
     {
         $result = $this->roleService->delete($id);
 
@@ -58,7 +58,7 @@ class RoleController
     }
 
     // Обновить роль
-    public function update(int $id): void
+    public function update(string $id): void
     {
         $body = $this->request->getBody();
 
@@ -67,11 +67,8 @@ class RoleController
         // Отправить запрос на обновление
         $updateRole = $this->roleService->update($id, $name);
 
-        // Преобразовать ответ в массив
-        $result = $this->roleService->convertToArray($updateRole);
-
         // Вернуть результат
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($updateRole);
     }
 
     // Получить все роли
@@ -80,10 +77,7 @@ class RoleController
         // Получить список всех ролей
         $roles = $this->roleService->getAll();
 
-        // Вернуть понятный массив
-        $result = $this->roleService->convertToArray($roles);
-
         // Отправить результат
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($roles);
     }
 }

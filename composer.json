@@ -9,6 +9,7 @@
         "kint-php/kint": "^4.1",
         "php-di/php-di": "^6.3",
         "aura/sqlquery": "^2.7",
-        "vlucas/phpdotenv": "^5.4"
+        "vlucas/phpdotenv": "^5.4",
+        "mongodb/mongodb": "^1.6"
     }
 }

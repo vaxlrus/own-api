@@ -25,14 +25,14 @@ class Response
     }
 
     // Отправка успешного создания объекта
-    public function sendCreated(array $input): void
+    public function sendCreated($input): void
     {
         http_response_code(self::CREATED);
         $this->sendData($input);
     }
 
     // Отправка успешного ответа
-    public function sendSuccess(array $input): void
+    public function sendSuccess($input): void
     {
         http_response_code(self::SUCCESS);
         $this->sendData($input);

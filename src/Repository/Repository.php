@@ -7,10 +7,12 @@ use App\Components\Database\QueryBuilder;
 abstract class Repository
 {
     protected QueryBuilder $qb;
+    protected string $tableName;
 
-    public function __construct(QueryBuilder $qb)
+    public function __construct(QueryBuilder $qb, string $tableName)
     {
         $this->qb = $qb;
+        $this->tableName = $tableName;
     }
 
     // Получение единичного элемента
@@ -19,7 +21,7 @@ abstract class Repository
         // Запрос на выборку
         $query = $this->qb->select()
         ->cols(['*'])
-        ->from(static::TABLE)
+        ->from($this->tableName)
         ->where('id = :id')
         ->bindValue('id', $id);
     
@@ -31,13 +33,12 @@ abstract class Repository
     }
 
     // Получение всех элементов
-    final protected function loadMany(int $limit)
+    final protected function loadMany()
     {
         // Запрос на выборку
         $query = $this->qb->select()
             ->cols(['*'])
-            ->from(static::TABLE)
-            ->limit($limit);
+            ->from($this->tableName);
 
         // Выполнение запроса
         $statement = $this->qb->doQuery($query);
@@ -51,7 +52,7 @@ abstract class Repository
     {
         // Запрос на удаление
         $query = $this->qb->delete()
-            ->from(static::TABLE)
+            ->from($this->tableName)
             ->where('id = :id')
             ->bindValue('id', $id);
 

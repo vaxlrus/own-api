@@ -10,14 +10,12 @@ use App\Services\RoleService;
 class UserController
 {
     private UserService $userService;
-    private RoleService $roleService;
     private Response $response;
     private Request $request;
 
-    public function __construct(Response $response, UserService $userService, RoleService $roleService, Request $request)
+    public function __construct(Response $response, UserService $userService, Request $request)
     {
         $this->userService = $userService;
-        $this->roleService = $roleService;
         $this->response = $response;
         $this->request = $request;
     }
@@ -28,14 +26,10 @@ class UserController
         // Объект пользователя
         $user = $this->userService->getOne($id);
 
-        // Конвертирование в понятный массив
-        $result = $this->userService->convertToArray($user);
-
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($user);
     }
 
     // Создать пользователя
-    // public function create(string $name, int $roleId)
     public function create()
     {
         $body = $this->request->getBody();
@@ -46,10 +40,7 @@ class UserController
         // Создание пользователя
         $user = $this->userService->create($name, $roleId);
 
-        // Конвертирование в понятный массив
-        $result = $this->userService->convertToArray($user);
-
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($user);
     }
 
     // Обновить пользователя
@@ -63,11 +54,8 @@ class UserController
         // Отправить запрос на обновление
         $updateUser = $this->userService->update($id, $name, $roleId);
 
-        // Преобразовать ответ в массив
-        $result = $this->userService->convertToArray($updateUser);
-
         // Вернуть результат
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($updateUser);
     }
 
     // Удалить пользователя
@@ -79,13 +67,10 @@ class UserController
     }
 
     // Получить всех пользователей
-    public function getAll(int $limit = 5): void
+    public function getAll(): void
     {
-        $users = $this->userService->getAll($limit);
+        $users = $this->userService->getAll();
 
-        // Конвертирование в понятный массив
-        $result = $this->userService->convertToArray($users);
-
-        $this->response->sendSuccess($result);
+        $this->response->sendSuccess($users);
     }
 }
