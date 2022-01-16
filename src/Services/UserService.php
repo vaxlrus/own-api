@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Components\Api\Response;
 use App\Services\RoleService;
 use \Exception;
+use App\Exceptions\NotFoundException;
 
 class UserService
 {
@@ -21,81 +22,63 @@ class UserService
     }
 
     // Получить одного пользователя
-    public function getOne(int $id): User
+    public function getOne(int $id)
     {
-        try
+        // Получить пользователя по ID
+        $user = $this->repo->loadOne($id);
+
+        // Если вернулся не объект
+        if (!is_object($user))
         {
-            // Получить пользователя по ID
-            return $this->repo->loadOne($id);
+            throw new NotFoundException('Пользователь с ID = ' . $id . ' не найден');
         }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
+
+        return $user;
     }
 
     // Получить всех
-    public function getAll(int $limit): array
+    public function getAll()
     {
-        try
+        // Массив с объектами пользователей
+        $users = $this->repo->loadAll();
+
+        // Если массив с пользователями пуст, значит их нет
+        if (empty($users))
         {
-            return $this->repo->loadAll($limit);
+            throw new Exception('Пользователей нет существует');
         }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
+        
+        return $users;
     }
 
     // Удалить пользователя
-    public function delete(int $id): array
+    public function delete(int $id): User
     {
-        if ($id < 0)
+        // Удалить пользователя (возвращается true или false)
+        $user = $this->repo->loadOne($id);
+        $deleteUser = $this->repo->deleteOne($id);
+
+        // Если true
+        if (!$deleteUser)
         {
-            $this->response->sendError('ID удаляемой роли не может быть отрицательным');
+            throw new Exception('Пользователь ' . $id . ' не удален');
         }
 
-        try
-        {
-            $deleteUser = $this->repo->deleteOne($id);
-
-            // Если true
-            if ($deleteUser)
-            {
-                $result = [
-                    'status' => true,
-                    'message' => 'Пользователь с ID = ' . $id . ' удален'
-                ];
-            }
-        }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
-
-        return $result;
+        // Если успешно то просто вернуть пустой массив, сконвертируется в 200 код в контроллере
+        return $user;
     }
 
     // Создание нового пользователя
-    public function create(string $name, int $roleId): User
+    public function create(string $name, string $roleId): User
     {
-        if (strlen($name) === 0)
-        {
-            $this->response->sendError("Не задано имя пользователя");
-        }
-
-        if ($roleId < 0)
-        {
-            $this->response->sendError("ID роли не может быть отрицательной");
-        }
-
         // Попытаться создать нового пользователя
-        $newUser = $this->repo->create($name, $roleId);
+        $newUser = $this->repo->createOne($name, $roleId);
 
-        // Проверка на наличие роли
-        if (!$this->roleService->assertRoleIsExists($roleId))
+        // Если сервис ролей вернул не объект, то значит роли не существует
+        if (!is_object($this->roleService->get($roleId)))
         {
-            $this->response->sendError('Роли с ID = ' . $roleId . ' не существует');
+            // $this->response->sendError('Роли с ID = ' . $roleId . ' не существует');
+            throw new Exception('Роли с ID = ' . $roleId . ' не существует');
         }
 
         // Если в ответ пришло число (ID последней вставки в БД)
@@ -104,71 +87,21 @@ class UserService
     }
 
     // Обновление пользователя
-    public function update(int $id, string $name, int $roleId): User
+    public function update(int $id, string $name, string $roleId): User
     {
-        if ($id < 0)
-        {
-            $this->response->sendError('ID пользователя не может быть отрицательным');
-        }
-
-        if (strlen($name) === 0)
-        {
-            $this->response->sendError('Имя пользователя не может быть пустым');
-        }
-
-        if ($roleId < 0)
-        {
-            $this->response->sendError('ID роли не может быть отрицательным');
-        }
-
         // Проверить существование роли
         $role = $this->roleService->get($roleId);
 
+        // Если роль не является объектом, значит не найдена
+        if (!is_object($role))
+        {
+            throw new Exception('Роль с ID = ' . $roleId . ' не найдена');
+        }
+
         // Попытаться пользователя
-        $updateUser = $this->repo->update($id, $name, $roleId);
+        $updateUser = $this->repo->updateOne($id, $name, $roleId);
 
-        // Если количество задействованных строк равно единице значит запрос сработал
-        if ($updateUser !== 1)
-        {
-            $this->response->sendError('Произошла ошибка при обновлении пользователя');
-        }
-
+        // Вернуть обновленный объект
         return $this->getOne($id);
-    }
-
-    // Конвертация в понятный массив
-    public function convertToArray($input): array
-    {
-        // Если это единичный объект
-        if (is_object($input))
-        {
-            $result = $this->convertObjectToArray($input);
-        }
-        // Если это массив из объектов
-        else if (is_array($input))
-        {
-            $result = [];
-
-            foreach ($input as $user)
-            {
-                $result[] = $this->convertObjectToArray($user);
-            }
-
-            return $result;
-        }
-
-        return $result;
-    }
-
-    // Конвертирование объекта в массив
-    private function convertObjectToArray(User $user): array
-    {
-        $result = [
-            'id' => $user->getId(),
-            'name' => $user->getName(),
-            'role' =>  $this->roleService->getById($user->getRoleId()),
-        ];
-
-        return $result;
     }
 }

@@ -2,106 +2,124 @@
 
 namespace App\Repository;
 
-use App\Repository\Repository;
 use App\Models\Role;
-use \Exception;
 
-final class RoleRepository extends Repository
+final class RoleRepository
 {
-    const TABLE = 'roles';
+    private $roles;
 
-    // Получить роль по ID
-    public function loadOne(int $id): Role
+    public function __construct(\MongoDB\Client $mongo)
     {
-        $result = parent::load($id);
-
-        // Если БД вернула bool, значит нету данных
-        if (is_bool($result))
-        {
-            throw new Exception('Роль с ID: ' . $id . ' не найдена');
-        }
-
-        return $this->convertToObject($result);
+        $this->roles = $mongo->{$_ENV['MONGO_ROLES_DB']}->{$_ENV['MONGO_COLLECTION_NAME']};
     }
 
-    // Получить все роли
-    // 100 указал т.к ролей в любом случае не будет 100 скорее всего, но раз метод родительский един для всех, то некий компромисс
-    public function loadAll(int $limit = 100): array
+    // Получить роль по имени
+    public function loadByName(string $name)
     {
-        if ($limit <= 0)
+        $result = $this->roles->findOne(['name' => $name]);
+
+        // Если вернуло массив
+        if (is_object($result))
         {
-            throw new Exception('Не задан лимитер для SQL запроса');
-        }
-
-        $result = parent::loadMany($limit);
-
-        // Если ответ пустой
-        if (is_array($result) AND count($result) === 0)
-        {
-            throw new Exception('Пользователей не существует');
-        }
-
-        $userList = [];
-
-        foreach ($result as $user)
-        {
-            $userList[] = $this->convertToObject($user);
-        }
-
-        return $userList;
-    }
-
-    // Создать роль
-    public function create(string $name)
-    {
-        $query = $this->qb->insert()
-            ->into(self::TABLE)
-            ->cols(['name'])
-            ->bindValue('name', $name);
-
-        $statement = $this->qb->doQuery($query);
-
-        // Получить идентификатор вставленного ID
-        return $this->qb->getLastInsertId();
-    }
-
-    // Удалить роль
-    public function deleteOne(int $id): bool
-    {
-        // Результат запроса
-        $result = parent::delete($id);
-
-        // Если затронуто строк больше чем 0, значит запрос выполнен
-        if ($result === 1)
-        {
-            return true;
+            return $this->convertToObject($result);
         }
         else
         {
-            throw new Exception('Роли с ID = ' . $id . ' не существует');
+            return null;
         }
     }
 
-    // Обновить роль
-    public function update(int $id, string $name): int
+    // Получить роль по ID
+    public function loadOne(string $id)
     {
-        $query = $this->qb->update()
-            ->table(self::TABLE)
-            ->cols(['name'])
-            ->where('id = :id')
-            ->bindValue('id', $id)
-            ->bindValue('name', $name);
+        $result = $this->roles->findOne(['role_id' => $id]);
+        
+        // Если вернуло массив
+        if (is_object($result))
+        {
+            return $this->convertToObject($result);
+        }
+        else
+        {
+            return null;
+        }
+    }
 
-        $statement = $this->qb->doQuery($query);
+    // Получить все роли
+    public function loadAll(): array
+    {
+        // Получить список всех ролей
+        $result = $this->roles->find([]);
 
-        return $statement->rowCount();
+        // Список ролей
+        $rolesList = [];
+
+        // Переконвертировать массивы в объекты
+        foreach ($result as $role)
+        {
+            $rolesList[] = $this->convertToObject($role);
+        }
+
+        // Вернуть список объектов
+        return $rolesList;
+    }
+
+    // Создать роль
+    public function createOne(string $name)
+    {
+        $id = uniqid();
+
+        // Создать новый документ в коллекции
+        $newRole = $this->roles->insertOne(["name" => $name, "role_id" => $id]);
+
+        // Проверить произошла ли вставка
+        if (!$newRole->isAcknowledged())
+        {
+            return null;
+        }
+
+        // Получить _id нового документа
+        $newRoleId = $newRole->getInsertedId();
+
+        // Получить документ по _id
+        $newRole = $this->roles->findOne(['_id' => $newRoleId]);
+
+        // Вернуть объект
+        return $this->convertToObject($newRole);
+    }
+
+    // Удалить роль
+    public function deleteOne(string $id)
+    {
+        $deleting = $this->roles->deleteOne(["role_id" => $id]);
+
+        // Если не удалено строк, то вернуть null
+        if ($deleting->getDeletedCount() === 0)
+        {
+            return null;
+        }
+
+        return true;
+    }
+
+    // Обновить роль
+    public function updateOne(string $id, string $name)
+    {
+        $updating = $this->roles->updateOne(
+            // Где роль = $id
+            ['role_id' => $id],
+            // Установить name = $name 
+            ['$set' => ['name' => $name]]);
+
+        // Вернуть готовый объект используя метод loadOne (конвертация уже произошла внутри)
+        return $this->loadOne($id);
     }
 
     // Конвертер в объект
-    public function convertToObject(array $role): Role
+    public function convertToObject($role): Role
     {
         return new Role(
-            intval($role['id']),
+            $role['role_id'],
             $role['name'],
         );
     }

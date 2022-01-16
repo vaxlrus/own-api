@@ -7,11 +7,13 @@ return [
     ['POST', '/users', ['App\Controllers\UserController', 'create']],
     ['GET', '/users', ['App\Controllers\UserController', 'getAll']],
 
-    ['GET', '/roles/{id: \d+}', ['App\Controllers\RoleController', 'get']],
-    ['DELETE', '/roles/{id: \d+}', ['App\Controllers\RoleController', 'delete']],
-    ['PUT', '/roles/{id: \d+}', ['App\Controllers\RoleController', 'update']],
+    ['GET', '/roles/{id: \w+}', ['App\Controllers\RoleController', 'get']],
+    ['DELETE', '/roles/{id: \w+}', ['App\Controllers\RoleController', 'delete']],
+    ['PUT', '/roles/{id: \w+}', ['App\Controllers\RoleController', 'update']],
     ['POST', '/roles', ['App\Controllers\RoleController', 'create']],
     ['GET', '/roles', ['App\Controllers\RoleController', 'getAll']],
+
+    ['GET', '/', ['App\Controllers\IndexController', 'ping']],
 ]
 
 ?>

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Repository\RoleRepository;
 use App\Models\Role;
 use App\Components\Api\Response;
+use App\Exceptions\NotFoundException;
 use Exception;
 
 class RoleService
@@ -17,169 +18,83 @@ class RoleService
         $this->roleRepository = $roleRepository;
     }
 
-    // Получить название роли по ID
-    public function getById(int $id): string
+    // Получить роль 
+    public function get(string $id): Role
     {
+        // Получить роль
         $role = $this->roleRepository->loadOne($id);
 
-        return $role->getName();
-    }
+        // Проверить ее наличие
+        if (!isset($role))
+        {
+            throw new NotFoundException('Роль ' . $id .' не найдена');
+        }
 
-    // Получить роль 
-    public function get(int $id): Role
-    {
-        try
-        {
-            return $this->roleRepository->loadOne($id);
-        }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
+        return $role;
     }
 
     // Получить все роли
     public function getAll(): array
     {
-        try
+        $rolesList = $this->roleRepository->loadAll();
+
+        if (!is_array($rolesList) OR empty($rolesList))
         {
-            return $this->roleRepository->loadAll();
+            throw new NotFoundException('Роли не найдены');
         }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
+         
+        return $rolesList;
     }
 
     // Создать роль
     public function create(string $name): Role
     {
-        if (strlen($name) === 0)
-        {
-            $this->response->sendError('Название роли не может быть пустым');
-        }
+       // Проверить на наличие роли
+       $roleIsExists = $this->roleRepository->loadByName($name);
 
-        // Проверить роль на существование
-        $rolesList = $this->getAll();
-
-        foreach ($rolesList as $roleObject)
-        {
-            // Если добавляемая роль совпадает хоть с одной другой имеющейся
-            if ($name === $roleObject->getName())
-            {
-                $this->response->sendError('Роль \'' . $name . '\' уже существует');
-            }
-        }
+       // Если вернулся объект и поле name у него совпадает с создаваемым
+       if (is_object($roleIsExists))
+       {
+           throw new Exception('Роль \'' . $name . '\' уже существует');
+       }
 
         // Если роль не существующая, то создать
-        $addRole = $this->roleRepository->create($name);
+        $addRole = $this->roleRepository->createOne($name);
 
-        return $this->get($addRole);
+        // Вернуть ответ пришедшиий из репозитория
+        return $addRole;
     }
 
     // Обновить роль
-    public function update(int $id, string $name): Role
+    public function update(string $id, string $name): Role
     {
-        if ($id < 0)
+        // Проверить наличие роли
+        $roleIsExists = $this->roleRepository->loadOne($id);
+
+        // Если false
+        if (!$roleIsExists)
         {
-            $this->response->sendError('ID роли не может быть отрицательным');
+            throw new NotFoundException('Роль ' . $name . " не найдена");
         }
 
-        try
-        {
-            // Попытаться обновить роль
-            $updateRole = $this->roleRepository->update($id, $name);
-
-
-        }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
-
-        // Если количество задействованных строк равно единице значит запрос сработал
-        if ($updateRole !== 1)
-        {
-            $this->response->sendError('Произошла ошибка при обновлении роли');
-        }
+        // Обновление роли
+        $updateRole = $this->roleRepository->updateOne($id, $name);
 
         return $this->get($id);
     }
 
     // Удалить роль
-    public function delete(int $id): array
+    public function delete(string $id): Role
     {
-        if ($id < 0)
+        $deletedRole = $this->roleRepository->loadOne($id);
+        $deleteRole = $this->roleRepository->deleteOne($id);
+
+        // Если удаление произошло
+        if (!$deleteRole)
         {
-            $this->response->sendError('ID роли не может быть отрицательным');
+            throw new Exception('Роль с ID . ' . $id . ' не удалена');
         }
-
-        try
-        {
-            $deleteRole = $this->roleRepository->deleteOne($id);
-
-            // Если true
-            if ($deleteRole)
-            {
-                $result = [
-                    'status' => true,
-                    'message' => 'Роль с ID = ' . $id . ' удален'
-                ];
-            }
-        }
-        catch (Exception $error)
-        {
-            $this->response->sendError($error->getMessage());
-        }
-
-        return  $result;
-    }
-
-    // Проверка на наличие роли
-    public function assertRoleIsExists(int $id): bool
-    {
-        $role = $this->get($id);
-
-        if (!is_object($role))
-        {
-            $this->response->sendError('Роли с ID = '. $id . ' не существует');
-        }
-
-        return true;
-    }
-
-    // Конвертация в понятный массив
-    public function convertToArray($input): array
-    {
-        // Если это единичный объект
-        if (is_object($input))
-        {
-            $result = $this->convertObjectToArray($input);
-        }
-        // Если это массив из объектов
-        else if (is_array($input))
-        {
-            $result = [];
-
-            foreach ($input as $user)
-            {
-                $result[] = $this->convertObjectToArray($user);
-            }
-
-            return $result;
-        }
-
-        return $result;
-    }
-
-    // Конвертирование объекта в массив
-    private function convertObjectToArray(Role $role): array
-    {
-        $result = [
-            'id' => $role->getId(),
-            'name' => $role->getName()
-        ];
-
-        return $result;
+        
+        return $deletedRole;
     }
 }
